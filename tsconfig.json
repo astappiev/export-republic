@@ -1,0 +1,18 @@
+{
+    "extends": "@tsconfig/node24/tsconfig.json",
+    "compilerOptions": {
+        "verbatimModuleSyntax": true,
+        "allowImportingTsExtensions": true,
+        "isolatedModules": true,
+        "noEmit": true,
+        "lib": [
+            "dom"
+        ]
+    },
+    "include": [
+        "src/**/*.ts"
+    ],
+    "exclude": [
+        "node_modules"
+    ]
+}

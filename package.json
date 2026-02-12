@@ -1,0 +1,47 @@
+{
+    "name": "export-republic",
+    "version": "0.1.0",
+    "type": "module",
+    "bin": {
+		"export-republic": "./src/cli.ts"
+	},
+    "scripts": {
+        "export-republic": "node --experimental-transform-types ./src/cli.ts",
+        "node": "node --experimental-transform-types --env-file=.env",
+        "build": "tsc",
+        "test": "jest"
+    },
+    "dependencies": {
+        "@fast-csv/format": "^5.0.5",
+        "@fast-csv/parse": "^5.0.5",
+        "better-sqlite3": "^12.6.2",
+        "build-url-ts": "^6.2.0",
+        "commander": "^12.1.0",
+        "dateformat": "^5.0.3",
+        "jsonl-db": "^2.0.0",
+        "ky": "^1.14.3",
+        "pino": "^10.1.0",
+        "pino-pretty": "^13.1.2",
+        "playwright": "^1.49.0",
+        "promptly": "^3.2.0",
+        "unpdf": "^1.4.0",
+        "ws": "^8.18.3"
+    },
+    "devDependencies": {
+        "@tsconfig/node24": "^24.0.4",
+        "@types/better-sqlite3": "^7.6.13",
+        "@types/dateformat": "^5.0.3",
+        "@types/jest": "^30.0.0",
+        "@types/nock": "^10.0.3",
+        "@types/node": "^25.2.1",
+        "@types/promptly": "^3.0.5",
+        "@types/ws": "^8.18.1",
+        "jest": "^30.2.0",
+        "nock": "^14.0.10",
+        "ts-jest": "^29.4.6",
+        "typescript": "^5.9.3"
+    },
+    "engines": {
+        "node": ">=24.11.0"
+    }
+}
