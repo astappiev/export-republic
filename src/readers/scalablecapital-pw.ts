@@ -38,23 +38,17 @@ interface ScalableCapitalPwOptions extends ReaderOptions {
  * 4. Return as Transaction objects
  */
 export class ScalableCapitalPwReader extends BaseReader<PortfolioPosition> {
-    private readonly username: string | null;
-    private readonly password: string | null;
-    private readonly headless: boolean;
     private browser: Browser | null = null;
     private page: Page | null = null;
 
-    constructor(options: ScalableCapitalPwOptions = {}) {
+    constructor() {
         super('scalable-capital-pw');
-        this.username = options.username || null;
-        this.password = options.password || null;
-        this.headless = options.headless !== false; // default true
     }
 
     protected async fetchTransactionRecords(options: ScalableCapitalPwOptions): Promise<PortfolioPosition[]> {
         try {
-            await this.launchBrowser();
-            await this.authenticate();
+            await this.launchBrowser(options.headless);
+            await this.authenticate(options.username, options.password);
             await this.navigateToBroker();
             return await this.extractPortfolioData();
         } finally {
@@ -62,10 +56,10 @@ export class ScalableCapitalPwReader extends BaseReader<PortfolioPosition> {
         }
     }
 
-    private async launchBrowser(): Promise<void> {
+    private async launchBrowser(headless?: boolean): Promise<void> {
         logger.info('🚀 Launching browser...');
         this.browser = await chromium.launch({
-            headless: this.headless,
+            headless: headless,
             args: ['--no-sandbox'],
         });
         this.page = await this.browser.newPage();
@@ -79,15 +73,15 @@ export class ScalableCapitalPwReader extends BaseReader<PortfolioPosition> {
         }
     }
 
-    private async authenticate(): Promise<void> {
+    private async authenticate(username?: string, password?: string): Promise<void> {
         logger.info('🔐 Authenticating with Scalable Capital...');
 
         await this.page!.goto(LOGIN_URL, { waitUntil: 'networkidle' });
 
-        if (this.username && this.password) {
+        if (username && password) {
             // Automated login with credentials
-            await this.page!.fill('#username', this.username);
-            await this.page!.fill('#password', this.password);
+            await this.page!.fill('#username', username);
+            await this.page!.fill('#password', password);
             await this.page!.click('button[type="submit"]');
         } else {
             // Interactive login - wait for user to complete

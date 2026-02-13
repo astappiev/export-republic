@@ -103,6 +103,11 @@ export class TradingViewFormatter extends BaseFormatter {
             return null;
         }
 
+        if (!symbol) {
+            logger.warn({ transaction: tx }, `No symbol found for ISIN: ${tx.isin}`);
+            return null;
+        }
+
         return [
             symbol,
             side,

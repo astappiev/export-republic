@@ -62,7 +62,7 @@ program
 
 interface FetchOptions {
     reader: string;
-    export?: string;
+    formatter?: string;
     output?: string;
     phone?: string;
     token?: string;
@@ -77,7 +77,7 @@ program
     .command('fetch')
     .description('Fetch transactions from live broker APIs')
     .option('-r, --reader <choice>', 'Reader: traderepublic-ws, scalablecapital-pw', 'traderepublic-ws')
-    .option('-e, --export <format>', 'Export format: ghostfolio, tradingview, investbrain, portfolio-performance, json')
+    .option('-f, --formatter <format>', 'Formatter: ghostfolio, tradingview, investbrain, portfolio-performance, json')
     .option('-o, --output <path>', 'Output file path')
     // TradeRepublic specific
     .option('-p, --phone <number>', 'Phone number for authentication')
@@ -93,26 +93,26 @@ program
         let transactions;
 
         if (options.reader === 'scalablecapital-pw') {
-            const reader = new ScalableCapitalPwReader({
+            const reader = new ScalableCapitalPwReader();
+            transactions = await reader.readTransactions({
                 username: options.scUsername,
                 password: options.scPassword,
                 headless: options.scHeadless !== false,
             });
-            transactions = await reader.readTransactions();
         } else {
-            const reader = new TradeRepublicWsReader({
+            const reader = new TradeRepublicWsReader();
+            transactions = await reader.readTransactions({
                 phone: options.phone,
                 token: options.token,
                 showToken: options.showToken,
                 cacheRecords: options.debug,
             });
-            transactions = await reader.readTransactions();
         }
 
-        if (options.export) {
+        if (options.formatter) {
             const cache = new CacheService();
             const marketDataService = createMarketDataService(cache);
-            await formatAndSaveTransactions(transactions, marketDataService, options.export, options.output);
+            await formatAndSaveTransactions(transactions, marketDataService, options.formatter, options.output);
             cache.close();
         }
     });

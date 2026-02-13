@@ -2,12 +2,11 @@ import { logger } from '../utils/logger.ts';
 import WebSocket from 'ws';
 import promptly from 'promptly';
 import { BaseReader, type Transaction, type ReaderOptions, TransactionType } from './index.ts';
-import { parseAmountEU } from '../utils/parse.ts';
+import { parseAmount } from '../utils/parse.ts';
 
 const API_BASE = 'https://api.traderepublic.com';
 const WS_URL = 'wss://api.traderepublic.com';
-const USER_AGENT =
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36';
+const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36';
 
 // Cached regex patterns for better performance
 const PHONE_REGEX = /^\+\d+$/;
@@ -42,7 +41,6 @@ interface RawTransaction {
     cardRefund?: string;
     cardPayment?: string;
     transfer?: boolean;
-    recipient?: string;
     from?: string;
     sender?: string;
     iban?: string;
@@ -52,43 +50,8 @@ interface RawTransaction {
     averageBalance?: number;
     couponPayment?: string;
     transaction?: string;
-    sections?: TransactionSection[];
 }
 
-/**
- * Section in transaction details
- */
-interface TransactionSection {
-    type: string;
-    action?: { type: string; payload: string };
-    data?: TransactionSectionData | TransactionTableItem[];
-}
-
-/**
- * Section data (for header type)
- */
-interface TransactionSectionData {
-    icon?: string;
-}
-
-/**
- * Table item in transaction details
- */
-interface TransactionTableItem {
-    title: string;
-    detail?: {
-        text?: string;
-        action?: {
-            payload?: {
-                sections?: TransactionSection[];
-            };
-        };
-    };
-}
-
-/**
- * Options for TradeRepublicWsReader
- */
 interface TradeRepublicWsOptions extends ReaderOptions {
     /** Phone number for authentication */
     phone?: string;
@@ -98,26 +61,17 @@ interface TradeRepublicWsOptions extends ReaderOptions {
     token?: string;
 }
 
-/**
- * Response from login init
- */
 interface LoginInitResponse {
     processId: string;
     countdownInSeconds: number;
     '2fa': string;
 }
 
-/**
- * Retry metadata from error response
- */
 interface RetryMeta {
     _meta_type: string;
     nextAttemptInSeconds: number;
 }
 
-/**
- * Error response from API
- */
 interface ApiErrorResponse {
     errors?: Array<{
         errorCode: string;
@@ -125,9 +79,6 @@ interface ApiErrorResponse {
     }>;
 }
 
-/**
- * Post response
- */
 interface PostResponse<T = unknown> {
     body: T;
     status: number;
@@ -143,24 +94,14 @@ interface PostResponse<T = unknown> {
  * 3. Parsing and formatting transaction data
  */
 export class TradeRepublicWsReader extends BaseReader<RawTransaction> {
-    private readonly phoneNumber: string | null;
-    private readonly showToken: boolean;
-    private sessionToken: string | null;
 
-    /**
-     * @param options - Configuration options
-     */
-    constructor(options: TradeRepublicWsOptions = {}) {
+    constructor() {
         super('trade-republic-ws');
-        this.phoneNumber = options.phone || null;
-        this.showToken = options.showToken || false;
-        this.sessionToken = options.token || null;
     }
 
     protected async fetchTransactionRecords(options: TradeRepublicWsOptions): Promise<RawTransaction[]> {
-        await this.authenticate();
-
-        const ws = new TradeRepublicWebSocket(this.sessionToken!);
+        const token = await this.authenticate(options.phone, options.showToken, options.token);
+        const ws = new TradeRepublicWebSocket(token);
 
         try {
             await ws.connect();
@@ -176,25 +117,28 @@ export class TradeRepublicWsReader extends BaseReader<RawTransaction> {
         }
     }
 
-    private async authenticate(): Promise<void> {
-        if (this.sessionToken) {
+    private async authenticate(phoneNumber?: string, showToken?: boolean, token?: string): Promise<string> {
+        if (token) {
             logger.info('✅ Using provided session token');
-            return;
+            return token;
         }
 
         logger.info('🔐 Connecting to the TradeRepublic API...');
-        const phoneNumber =
-            this.phoneNumber || (await this.promptUser('Enter your phone (e.g., +1234567890): ', 'phone'));
+        if (!phoneNumber) {
+            phoneNumber = await this.promptUser('Enter your phone (e.g., +1234567890): ', 'phone');
+        }
         const pin = await this.promptUser('Enter your PIN (4 digits, hidden): ', 'pin');
 
         const { processId, countdownInSeconds } = await this.initializeLogin(phoneNumber, pin);
         const code = await this.get2FACode(processId, countdownInSeconds);
-        this.sessionToken = await this.verifyAndGetToken(processId, code);
+        token = await this.verifyAndGetToken(processId, code);
 
         logger.info('✅ Successfully authenticated!');
-        if (this.showToken) {
-            logger.info(`Session token: ${this.sessionToken}`);
+        if (showToken) {
+            logger.info(`Session token: ${token}`);
         }
+
+        return token;
     }
 
     private async promptUser(
@@ -347,64 +291,62 @@ export class TradeRepublicWsReader extends BaseReader<RawTransaction> {
      * Converts a space-separated title to camelCase property name
      * Example: "Order Type" -> "orderType"
      */
-    private normalizePropertyName(title: string): string {
+    private normalizePropertyName(title?: string): string {
+        if (!title) return '';
         const words = title.split(' ');
         if (words.length === 1) return title.toLowerCase();
 
-        return (
-            words[0].toLowerCase() +
-            words
-                .slice(1)
-                .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-                .join('')
-        );
+        return words[0].toLowerCase() + words.slice(1).map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join('');
     }
 
     /**
      * Extracts transaction data from TradeRepublic's nested JSON structure
      * into a flat object with camelCase property names
      */
-    private extractTransactionData(jsonData: RawTransaction): RawTransaction {
-        const data: RawTransaction = { ...jsonData };
-        delete data.sections;
+    private extractTransactionData(raw: RawTransaction): RawTransaction {
+        const data: RawTransaction = { ...raw };
 
-        for (const section of jsonData.sections || []) {
-            if (section.type === 'header') {
-                this.extractHeaderData(section, data);
-            } else if (section.type === 'table') {
-                this.extractTableData(section, data);
+        if (Array.isArray(raw.sections)) {
+            delete data.sections;
+
+            for (const section of raw.sections) {
+                if (section.type === 'header') {
+                    this.extractHeaderData(section, data);
+                } else if (section.type === 'table') {
+                    this.extractTableData(section, data);
+                }
             }
         }
 
         return data;
     }
 
-    private extractHeaderData(section: TransactionSection, data: RawTransaction): void {
-        if (section?.action?.type === 'instrumentDetail') {
+    private extractHeaderData(section: any, data: RawTransaction): void {
+        if (section.action?.type === 'instrumentDetail') {
             data.isin = section.action.payload;
-        } else if ((section?.data as TransactionSectionData)?.icon) {
-            const match = (section.data as TransactionSectionData).icon!.match(LOGO_ISIN_REGEX);
+        } else if (typeof section.data?.icon === 'string') {
+            const match = section.data.icon.match(LOGO_ISIN_REGEX);
+            data.isin = match ? match[1] : undefined;
+        } else if (typeof section.data?.icon?.asset === 'string') {
+            const match = section.data.icon.asset.match(LOGO_ISIN_REGEX);
             data.isin = match ? match[1] : undefined;
         }
     }
 
-    private extractTableData(section: TransactionSection, data: RawTransaction): void {
-        for (const item of (section.data as TransactionTableItem[]) || []) {
+    private extractTableData(section: any, data: RawTransaction): void {
+        if (!Array.isArray(section.data)) return;
+        for (const item of section.data) {
             const propertyName = this.normalizePropertyName(item.title);
-            if (propertyName && !(data as Record<string, unknown>)[propertyName] && item.detail?.text) {
-                (data as Record<string, unknown>)[propertyName] = item.detail.text;
+            if (propertyName && !data[propertyName] && item.detail?.text) {
+                data[propertyName] = item.detail.text;
             }
 
             for (const nestedSection of item.detail?.action?.payload?.sections || []) {
                 if (nestedSection.type === 'table') {
-                    for (const nestedItem of (nestedSection.data as TransactionTableItem[]) || []) {
+                    for (const nestedItem of nestedSection.data || []) {
                         const nestedPropertyName = this.normalizePropertyName(nestedItem.title);
-                        if (
-                            nestedPropertyName &&
-                            !(data as Record<string, unknown>)[nestedPropertyName] &&
-                            nestedItem.detail?.text
-                        ) {
-                            (data as Record<string, unknown>)[nestedPropertyName] = nestedItem.detail.text;
+                        if (nestedPropertyName && !data[nestedPropertyName] && nestedItem.detail?.text) {
+                            data[nestedPropertyName] = nestedItem.detail.text;
                         }
                     }
                 }
@@ -413,30 +355,36 @@ export class TradeRepublicWsReader extends BaseReader<RawTransaction> {
     }
 
     protected parseTransaction(record: RawTransaction): Transaction | null {
-        const rawData = this.extractTransactionData(record);
+        record = this.extractTransactionData(record);
 
-        const { shares, sharePrice } = this.parseTransactionString(rawData.transaction);
-        const transactionType = this.classifyTransactionType(rawData);
+        const { shares, sharePrice } = this.parseTransactionString(record.transaction);
+        const transactionType = this.classifyTransactionType(record);
 
-        // Required fields default to 0/empty if missing, to satisfy Transaction interface strictly
-        const quantity = shares || (rawData.shares ? parseInt(rawData.shares) : 0);
-        const price = sharePrice || Math.abs(parseAmountEU(rawData.sharePrice) || 0);
-        const fees = Math.abs(parseAmountEU(rawData.fee) || 0);
-        const taxes = Math.abs(parseAmountEU(rawData.tax) || 0);
-        const dateStr = rawData.timestamp?.replace('+0000', 'Z') || new Date().toISOString();
+        if (!transactionType) {
+            logger.error({ tx: record }, '⚠️  Unrecognized transaction');
+            return null;
+        }
+
+        const quantity = shares || (record.shares ? parseInt(record.shares) : 0);
+        const price = sharePrice || Math.abs(parseAmount(record.sharePrice) || 0);
+        const fees = Math.abs(parseAmount(record.fee) || 0);
+        const taxes = Math.abs(parseAmount(record.tax) || 0);
+        const dateStr = record.timestamp?.replace('+0000', 'Z') || new Date().toISOString();
         const date = new Date(dateStr);
 
         return {
-            id: rawData.id,
-            type: transactionType!, // We've validated this in classifyTransactionType logic mostly, but 'undefined' type needs handling if we want strictness.
-            isin: rawData.isin || '', // strict Transaction requires string
-            name: rawData.title || undefined,
+            id: record.id,
+            type: transactionType,
+            isin: record.isin,
+            name: record.title,
             shares: quantity,
             price,
-            currency: rawData.amount?.currency || this.parseCurrency(rawData.total) || 'EUR', // Default to EUR if unknown, consistent with TR base
+            currency: record.amount?.currency || this.parseCurrency(record.total) || 'EUR',
             fee: fees,
             tax: taxes,
             date,
+            status: record.status,
+            amount: record.amount?.value || parseAmount(record.total),
             source: this.name,
         };
     }
@@ -449,8 +397,8 @@ export class TradeRepublicWsReader extends BaseReader<RawTransaction> {
         const parts = transaction.split('x').map((part) => part.trim());
         if (parts.length !== 2) return {};
 
-        const shares = parseAmountEU(parts[0]);
-        const sharePrice = parseAmountEU(parts[1]);
+        const shares = parseAmount(parts[0]);
+        const sharePrice = parseAmount(parts[1]);
         return { shares, sharePrice };
     }
 
@@ -472,56 +420,44 @@ export class TradeRepublicWsReader extends BaseReader<RawTransaction> {
                 return TransactionType.BUY;
             } else if (tx.orderType?.includes('Sell') || tx.subtitle?.includes('Sell')) {
                 return TransactionType.SELL;
-            } else if (
-                tx.event?.toLowerCase().includes('dividend') ||
-                (tx.event?.toLowerCase().includes('income') && tx.dividendPerShare)
-            ) {
+            } else if (tx.event?.toLowerCase().includes('dividend') || (tx.event?.toLowerCase().includes('income') && tx.dividendPerShare)) {
                 return TransactionType.DIVIDEND;
             } else if (tx.event?.toLowerCase().includes('repayment')) {
                 return TransactionType.LIABILITY;
             } else if (tx.saveback) {
                 return TransactionType.BUY;
+            } else if (tx.event?.toLowerCase().includes('lump sum')) {
+                return TransactionType.TAX;
+            }
+        } else {
+            if (tx.annualRate || (tx.accrued && tx.averageBalance) || tx.couponPayment || tx.event === 'Coupon Payment') {
+                return TransactionType.INTEREST;
+            } else if (tx.event?.toLowerCase().includes('tax')) {
+                return TransactionType.TAX;
             }
 
-            logger.error({ tx }, '⚠️  Unrecognized transaction');
+            // card: payment, refund, transfer, deposit, withdrawal, cashback, verification, gift, canceled
+            if (tx.status === 'CANCELED') {
+                return TransactionType.CANCELED;
+            } else if (tx.cardRefund === 'Completed') {
+                return TransactionType.REFUND;
+            } else if (tx.cardPayment === 'Completed' || tx.cardPayment === 'Pending' || tx.directDebit === 'Completed') {
+                return TransactionType.PAYMENT;
+            } else if (tx.transfer && tx.recipient) {
+                return TransactionType.TRANSFER;
+            } else if ((tx.from || tx.sender) && tx.iban) {
+                return TransactionType.DEPOSIT;
+            } else if (tx.cardVerification) {
+                return TransactionType.VERIFICATION;
+            } else if (tx.giftAmount) {
+                return TransactionType.GIFT;
+            }
         }
 
-        if (
-            tx.annualRate ||
-            (tx.accrued && tx.averageBalance) ||
-            tx.couponPayment ||
-            tx.event === 'Coupon Payment'
-        ) {
-            return TransactionType.INTEREST;
-        } else if (tx.event?.toLowerCase().includes('tax')) {
-            return TransactionType.TAX;
-        }
-
-        // card: payment, refund, transfer, deposit, withdrawal, cashback, verification, gift, canceled
-        if (tx.status === 'CANCELED') {
-            return TransactionType.CANCELED;
-        } else if (tx.cardRefund === 'Completed') {
-            return TransactionType.REFUND;
-        } else if (tx.cardPayment === 'Completed' || tx.cardPayment === 'Pending') {
-            return TransactionType.PAYMENT;
-        } else if (tx.transfer && tx.recipient) {
-            return TransactionType.TRANSFER;
-        } else if ((tx.from || tx.sender) && tx.iban) {
-            return TransactionType.DEPOSIT;
-        } else if (tx.cardVerification) {
-            return TransactionType.VERIFICATION;
-        } else if (tx.giftAmount) {
-            return TransactionType.GIFT;
-        }
-
-        logger.error({ tx }, '⚠️  Unrecognized transaction');
         return undefined;
     }
 }
 
-/**
- * WebSocket client for TradeRepublic API
- */
 class TradeRepublicWebSocket {
     private readonly token: string;
     private ws: WebSocket | null = null;
@@ -624,7 +560,7 @@ class TradeRepublicWebSocket {
     }
 
     async *fetchAllTransactions(): AsyncGenerator<RawTransaction> {
-        let afterCursor: string | null = null;
+        let afterCursor: string | undefined = undefined;
         let totalFetched = 0;
 
         while (true) {
@@ -643,7 +579,7 @@ class TradeRepublicWebSocket {
                 }
             }
 
-            afterCursor = page.cursors?.after || null;
+            afterCursor = page.cursors?.after;
             if (!afterCursor) {
                 break;
             }
@@ -654,9 +590,7 @@ class TradeRepublicWebSocket {
         logger.info(`📊 Total transactions fetched: ${totalFetched}`);
     }
 
-    private async fetchTransactionPage(
-        afterCursor: string | null
-    ): Promise<{ items: RawTransaction[]; cursors?: { after?: string } }> {
+    private async fetchTransactionPage(afterCursor?: string): Promise<{ items: RawTransaction[]; cursors?: { after?: string } }> {
         const payload: Record<string, unknown> = {
             type: 'timelineTransactions',
             token: this.token,

@@ -1,6 +1,53 @@
-import { parseAmountEU, parseAmountUS } from './parse.ts';
+import { parseAmount, parseAmountEU, parseAmountUS } from './parse.ts';
 
 describe('parse utils', () => {
+    describe('parseAmount (auto-detect)', () => {
+        test('parses US-style decimals (dot as decimal separator)', () => {
+            expect(parseAmount('0.005163')).toBe(0.005163);
+            expect(parseAmount('1234.56')).toBe(1234.56);
+            expect(parseAmount('0.56')).toBe(0.56);
+            expect(parseAmount('-0.005163')).toBe(-0.005163);
+        });
+
+        test('parses EU-style decimals (comma as decimal separator)', () => {
+            expect(parseAmount('25,965')).toBe(25.965);
+            expect(parseAmount('0,56')).toBe(0.56);
+            expect(parseAmount('-0,56')).toBe(-0.56);
+        });
+
+        test('parses US-style with thousands (comma + dot)', () => {
+            expect(parseAmount('1,234.56')).toBe(1234.56);
+            expect(parseAmount('1,234,567.89')).toBe(1234567.89);
+        });
+
+        test('parses EU-style with thousands (dot + comma)', () => {
+            expect(parseAmount('1.234,56')).toBe(1234.56);
+            expect(parseAmount('1.234.567,89')).toBe(1234567.89);
+        });
+
+        test('handles plain integers', () => {
+            expect(parseAmount('123')).toBe(123);
+            expect(parseAmount('-123')).toBe(-123);
+        });
+
+        test('handles currency symbols', () => {
+            expect(parseAmount('€0.005163')).toBe(0.005163);
+            expect(parseAmount('$1,234.56')).toBe(1234.56);
+        });
+
+        test('handles 0 values', () => {
+            expect(parseAmount('0')).toBe(0);
+            expect(parseAmount('0.00')).toBe(0);
+            expect(parseAmount('0,00')).toBe(0);
+        });
+
+        test('handles invalid inputs', () => {
+            expect(parseAmount(null)).toBeUndefined();
+            expect(parseAmount(undefined)).toBeUndefined();
+            expect(parseAmount('')).toBeUndefined();
+        });
+    });
+
     describe('parseAmountEU', () => {
         test('handles currency symbols and whitespace', () => {
             expect(parseAmountEU('€1.234,56')).toBe(1234.56);

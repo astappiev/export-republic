@@ -1,8 +1,8 @@
 import { jsonlDir } from "jsonl-db";
 import { logger } from "../utils/logger.ts";
 import { isValidIsin } from "../utils/validate.ts";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
+import { join } from "path";
+import { mkdirSync } from "fs";
 
 export enum TransactionType {
     BUY = 'buy',
@@ -91,7 +91,10 @@ export abstract class BaseReader<T = any> {
         let records: T[] = [];
         let recordsCache: RecordsCache<T> | undefined;
         if (options.cacheRecords) {
-            const cacheDB = jsonlDir(join(dirname(fileURLToPath(import.meta.url)), 'records'));
+            const recordsDir = join(process.cwd(), 'records');
+            mkdirSync(recordsDir, { recursive: true });
+
+            const cacheDB = jsonlDir(recordsDir);
             recordsCache = cacheDB.file(this.name) as unknown as RecordsCache<T>;
 
             if (recordsCache && await recordsCache.count() > 0) {
