@@ -2,21 +2,24 @@ import { logger } from "./utils/logger.ts";
 import { isValidIsin } from "./utils/validate.ts";
 
 export enum TransactionType {
+    // Equity
     BUY = 'buy',
     SELL = 'sell',
     DIVIDEND = 'dividend',
     INTEREST = 'interest',
-    FEE = 'fee',
-    TAX = 'tax',
-    LIABILITY = 'liability',
+    // Cash
     CANCELED = 'canceled',
-    REFUND = 'refund',
-    PAYMENT = 'payment',
-    TRANSFER = 'transfer',
     DEPOSIT = 'deposit',
     WITHDRAWAL = 'withdrawal',
+    TRANSFER = 'transfer',
+    // Payments
+    REFUND = 'refund',
+    PAYMENT = 'payment',
     VERIFICATION = 'verification',
+    // Misc
     GIFT = 'gift',
+    FEE = 'fee',
+    TAX = 'tax',
 }
 
 export enum AssetType {

@@ -1,7 +1,7 @@
 import { logger } from '../utils/logger.ts';
 import WebSocket from 'ws';
 import promptly from 'promptly';
-import { TransactionType, type Transaction } from "../transaction.ts";
+import { AssetType, TransactionType, type Transaction } from "../transaction.ts";
 import { BaseReader, type ReaderOptions } from './index.ts';
 import { parseAmount } from '../utils/parse.ts';
 
@@ -315,6 +315,13 @@ export class TradeRepublicWsReader extends BaseReader<RawTransaction> {
                     this.extractHeaderData(section, data);
                 } else if (section.type === 'table') {
                     this.extractTableData(section, data);
+                    if (section.action?.payload?.sections) {
+                        for (const nestedSection of section.action.payload.sections) {
+                            if (nestedSection.type === 'table') {
+                                this.extractTableData(nestedSection, data);
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -366,17 +373,41 @@ export class TradeRepublicWsReader extends BaseReader<RawTransaction> {
             return null;
         }
 
-        const quantity = shares || (record.shares ? parseInt(record.shares) : 0);
-        const price = sharePrice || Math.abs(parseAmount(record.sharePrice) || 0);
+        let quantity = shares || (record.shares ? parseInt(record.shares) : 0);
+        if (quantity === 0 && (record.couponPayment || record.repayment || record.order)) {
+            quantity = 1;
+        }
+
+        const price = sharePrice || Math.abs(parseAmount(record.sharePrice) || parseAmount(record.order) || parseAmount(record.couponPayment) || parseAmount(record.repayment) || 0);
         const fees = Math.abs(parseAmount(record.fee) || 0);
-        const taxes = Math.abs(parseAmount(record.tax) || 0);
+
+        const taxVal = parseAmount(record.tax) || 0;
+        const accruedInterest = parseAmount(record.accruedInterest) || 0;
+        const taxCorrection = parseAmount(record.taxCorrection) || 0;
+        const taxes = Math.abs(taxVal + accruedInterest - taxCorrection);
+
         const dateStr = record.timestamp?.replace('+0000', 'Z') || new Date().toISOString();
         const date = new Date(dateStr);
+
+        let assetType: AssetType | undefined = undefined;
+        if (typeof record.icon === 'string' && record.icon.includes('bond')) {
+            assetType = AssetType.BOND;
+        } else if (typeof (record.avatar as any)?.asset === 'string' && (record.avatar as any).asset.includes('bond')) {
+            assetType = AssetType.BOND;
+        }
+
+        let comment: string | undefined = undefined;
+        if (typeof record.quotation === 'string') {
+            comment = `Quotation: ${parseFloat(record.quotation)}%`;
+        } else if (typeof record.coupon === 'string' && typeof record.nominal === 'string') {
+            comment = `Coupon: ${parseFloat(record.coupon)}%; Nominal: ${Math.abs(parseAmount(record.nominal) || 0)}`;
+        }
 
         return {
             id: record.id,
             type: transactionType,
             isin: record.isin,
+            assetType,
             name: record.title,
             shares: quantity,
             price,
@@ -386,16 +417,17 @@ export class TradeRepublicWsReader extends BaseReader<RawTransaction> {
             date,
             status: record.status,
             amount: record.amount?.value || parseAmount(record.total),
+            comment,
             source: this.name,
         };
     }
 
     /**
-     * Parse string like "0.389478 x  €32.51" and return shares and sharePrice
+     * Parse string like "0.389478 x  €32.51" or "2 ×  €272.00" and return shares and sharePrice
      */
     private parseTransactionString(transaction: string | undefined): { shares?: number; sharePrice?: number } {
         if (!transaction) return {};
-        const parts = transaction.split('x').map((part) => part.trim());
+        const parts = transaction.split(/x|×/).map((part) => part.trim());
         if (parts.length !== 2) return {};
 
         const shares = parseAmount(parts[0]);
@@ -419,12 +451,10 @@ export class TradeRepublicWsReader extends BaseReader<RawTransaction> {
         if (tx.isin) {
             if (tx.orderType?.includes('Buy') || tx.subtitle?.includes('Buy') || tx.subtitle === 'Saving executed') {
                 return TransactionType.BUY;
-            } else if (tx.orderType?.includes('Sell') || tx.subtitle?.includes('Sell')) {
+            } else if (tx.orderType?.includes('Sell') || tx.subtitle?.includes('Sell') || tx.event?.toLowerCase().includes('repayment')) {
                 return TransactionType.SELL;
             } else if (tx.event?.toLowerCase().includes('dividend') || (tx.event?.toLowerCase().includes('income') && tx.dividendPerShare)) {
                 return TransactionType.DIVIDEND;
-            } else if (tx.event?.toLowerCase().includes('repayment')) {
-                return TransactionType.LIABILITY;
             } else if (tx.saveback) {
                 return TransactionType.BUY;
             } else if (tx.event?.toLowerCase().includes('lump sum')) {
