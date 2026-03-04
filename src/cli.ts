@@ -11,6 +11,7 @@ import { logger } from './utils/logger.ts';
 
 import { BaseFormatter, type FormatOptions } from './formatters/index.ts';
 import { GhostfolioFormatter } from './formatters/ghostfolio.ts';
+import { SimplywallFormatter } from './formatters/simplywall.ts';
 import { TradingViewFormatter } from './formatters/tradingview.ts';
 import { InvestbrainFormatter } from './formatters/investbrain.ts';
 import { PortfolioPerformanceFormatter } from './formatters/portfolio-performance.ts';
@@ -51,7 +52,7 @@ program
     .argument('<input>', 'Input file path')
     .argument('<output>', 'Output file path')
     .option('-r, --reader <name>', `Reader: ${CONVERT_READERS.join(', ')}`, 'transactions-csv')
-    .option('-f, --formatter <name>', 'Formatter: ghostfolio, tradingview, investbrain, portfolio-performance, json', 'tradingview')
+    .option('-f, --formatter <name>', 'Formatter: ghostfolio, tradingview, simplywall, investbrain, portfolio-performance, json', 'tradingview')
     .option('-e, --exchanges <exchanges>', 'Comma separated list of exchanges to use', commaSeparatedList, ['GETTEX', 'XETR', 'HAN', 'LSX'])
     .option('-c, --currency <currency>', 'Currency to filter exchanges by', 'EUR')
     .action(async (inputPath: string, outputPath: string, options: ConvertOptions) => {
@@ -233,6 +234,10 @@ async function formatAndSaveTransactions(
             case 'tv':
             case 'tradingview':
                 formatter = new TradingViewFormatter(marketDataService);
+                break;
+            case 'sw':
+            case 'simplywall':
+                formatter = new SimplywallFormatter(marketDataService);
                 break;
             case 'gf':
             case 'ghostfolio':
