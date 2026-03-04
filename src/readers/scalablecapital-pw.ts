@@ -46,7 +46,7 @@ export class ScalableCapitalPwReader extends BaseReader<PortfolioPosition> {
         super('scalable-capital-pw');
     }
 
-    protected async fetchTransactionRecords(options: ScalableCapitalPwOptions): Promise<PortfolioPosition[]> {
+    async fetchTransactionRecords(options: ScalableCapitalPwOptions): Promise<PortfolioPosition[]> {
         try {
             await this.launchBrowser(options.headless);
             await this.authenticate(options.username, options.password);
@@ -261,7 +261,7 @@ export class ScalableCapitalPwReader extends BaseReader<PortfolioPosition> {
         return positions;
     }
 
-    protected parseTransaction(record: PortfolioPosition): Transaction | null {
+    parseTransaction(record: PortfolioPosition): Transaction | null {
         const shares = this.parseShares(record.shares);
         const currentValue = parseAmountEU(record.currentValue) || 0;
         const price = shares > 0 ? currentValue / shares : 0;

@@ -100,7 +100,7 @@ export class TradeRepublicWsReader extends BaseReader<RawTransaction> {
         super('trade-republic-ws');
     }
 
-    protected async fetchTransactionRecords(options: TradeRepublicWsOptions): Promise<RawTransaction[]> {
+    async fetchTransactionRecords(options: TradeRepublicWsOptions): Promise<RawTransaction[]> {
         const token = await this.authenticate(options.phone, options.showToken, options.token);
         const ws = new TradeRepublicWebSocket(token);
 
@@ -355,7 +355,7 @@ export class TradeRepublicWsReader extends BaseReader<RawTransaction> {
         }
     }
 
-    protected parseTransaction(record: RawTransaction): Transaction | null {
+    parseTransaction(record: RawTransaction): Transaction | null {
         record = this.extractTransactionData(record);
 
         const { shares, sharePrice } = this.parseTransactionString(record.transaction);

@@ -145,12 +145,12 @@ export class TradeRepublicPdfReader extends BaseReader<ParsedPdfTransaction> {
         'Dez.': 11,
     };
 
-    protected async fetchTransactionRecords(options: TradeRepublicPdfOptions): Promise<ParsedPdfTransaction[]> {
+    async fetchTransactionRecords(options: TradeRepublicPdfOptions): Promise<ParsedPdfTransaction[]> {
         const parsed = this.parse(options.pages);
         return parsed.transactions || [];
     }
 
-    protected parseTransaction(record: ParsedPdfTransaction): Transaction | null {
+    parseTransaction(record: ParsedPdfTransaction): Transaction | null {
         const type = this.classifyGermanType(record.type, record);
         const amount = record.received ? record.received : record.spent ? -record.spent : 0;
 

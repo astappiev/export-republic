@@ -1,4 +1,4 @@
-import { parseTransactionType, type Transaction } from "../transaction.ts";
+import { parseAssetType, parseTransactionType, type Transaction } from "../transaction.ts";
 import { BaseReader, type ReaderOptions } from './index.ts';
 import { parseString } from '@fast-csv/parse';
 import { readFile } from 'fs/promises';
@@ -66,7 +66,7 @@ export class ScalableCapitalCsvReader extends BaseReader<ScalableCapitalCsvRecor
         return executedRecords;
     }
 
-    protected parseTransaction(record: ScalableCapitalCsvRecord): Transaction | null {
+    parseTransaction(record: ScalableCapitalCsvRecord): Transaction | null {
         const date = new Date(`${record.date}T${record.time}`);
 
         const isMigrationDate = record.date === '2025-12-05' || record.date === '2025-12-06' || record.date === '2025-12-07';
@@ -80,12 +80,14 @@ export class ScalableCapitalCsvReader extends BaseReader<ScalableCapitalCsvRecor
             return null;
         }
 
+        const assetType = parseAssetType(record.assetType);
+
         return {
             id: record.reference,
             date,
             status: record.status,
             type,
-            assetType: record.assetType,
+            assetType,
             isin: record.isin,
             name: record.description,
             shares: parseAmountEU(record.shares) || 0,

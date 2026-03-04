@@ -19,6 +19,13 @@ export enum TransactionType {
     GIFT = 'gift',
 }
 
+export enum AssetType {
+    STOCK = 'stock',
+    ETF = 'etf',
+    BOND = 'bond',
+    CASH = 'cash',
+}
+
 export interface Transaction {
     /** Unique identifier (hash or UUID) */
     id?: string;
@@ -31,7 +38,7 @@ export interface Transaction {
     /** Trading symbol (optional, resolved by MarketDataService) */
     symbol?: string;
     /** Asset type */
-    assetType?: string;
+    assetType?: AssetType;
     /** Security name */
     name?: string;
     /** Number of shares/units */
@@ -59,15 +66,26 @@ const TRANSACTION_TYPE_ALIASES: Record<string, TransactionType> = {
     taxes: TransactionType.TAX,
 };
 
-export function parseTransactionType(type?: string): TransactionType | null {
-    if (!type) return null;
+export function parseTransactionType(type?: string): TransactionType | undefined {
+    if (!type) return undefined;
     const normalized = type.toLowerCase().trim();
 
     if (Object.values(TransactionType).includes(normalized as TransactionType)) {
         return normalized as TransactionType;
     }
 
-    return TRANSACTION_TYPE_ALIASES[normalized] ?? null;
+    return TRANSACTION_TYPE_ALIASES[normalized] ?? undefined;
+}
+
+export function parseAssetType(type?: string): AssetType | undefined {
+    if (!type) return undefined;
+    const normalized = type.toLowerCase().trim();
+
+    if (Object.values(AssetType).includes(normalized as AssetType)) {
+        return normalized as AssetType;
+    }
+
+    return undefined;
 }
 
 export function validateTransaction(tx: Transaction | null | undefined): tx is Transaction {

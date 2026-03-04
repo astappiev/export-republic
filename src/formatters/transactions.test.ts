@@ -1,6 +1,6 @@
 import { TransactionsFormatter, HEADERS } from './transactions.ts';
 import { TransactionsReader } from '../readers/transactions.ts';
-import { TransactionType, type Transaction } from "../transaction.ts";
+import { AssetType, TransactionType, type Transaction } from "../transaction.ts";
 
 const SAMPLE_TRANSACTIONS: Transaction[] = [
     {
@@ -9,7 +9,7 @@ const SAMPLE_TRANSACTIONS: Transaction[] = [
         status: 'executed',
         isin: 'IE00B4L5Y983',
         symbol: 'IWDA',
-        assetType: 'ETF',
+        assetType: AssetType.ETF,
         name: 'iShares Core MSCI World',
         shares: 10.5,
         price: 82.34,
@@ -25,6 +25,7 @@ const SAMPLE_TRANSACTIONS: Transaction[] = [
         id: 'tx-002',
         type: TransactionType.DIVIDEND,
         isin: 'US0378331005',
+        assetType: AssetType.STOCK,
         name: 'Apple Inc.',
         shares: 5,
         amount: 3.75,
@@ -34,6 +35,7 @@ const SAMPLE_TRANSACTIONS: Transaction[] = [
     },
     {
         type: TransactionType.DEPOSIT,
+        assetType: AssetType.CASH,
         amount: 500,
         date: new Date('2025-08-01T12:00:00.000Z'),
         currency: 'EUR',
@@ -81,7 +83,7 @@ describe('TransactionsFormatter', () => {
         expect(buy.status).toBe('executed');
         expect(buy.isin).toBe('IE00B4L5Y983');
         expect(buy.symbol).toBe('IWDA');
-        expect(buy.assetType).toBe('ETF');
+        expect(buy.assetType).toBe(AssetType.ETF);
         expect(buy.name).toBe('iShares Core MSCI World');
         expect(buy.shares).toBe(10.5);
         expect(buy.price).toBe(82.34);
@@ -98,6 +100,7 @@ describe('TransactionsFormatter', () => {
         expect(div.id).toBe('tx-002');
         expect(div.type).toBe(TransactionType.DIVIDEND);
         expect(div.isin).toBe('US0378331005');
+        expect(div.assetType).toBe(AssetType.STOCK);
         expect(div.shares).toBe(5);
         expect(div.amount).toBe(3.75);
         expect(div.symbol).toBeUndefined();
@@ -107,6 +110,7 @@ describe('TransactionsFormatter', () => {
         // Minimal deposit
         const dep = result[2];
         expect(dep.type).toBe(TransactionType.DEPOSIT);
+        expect(dep.assetType).toBe(AssetType.CASH);
         expect(dep.amount).toBe(500);
         expect(dep.id).toBeUndefined();
         expect(dep.isin).toBeUndefined();

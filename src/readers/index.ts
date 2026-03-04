@@ -27,9 +27,9 @@ export abstract class BaseReader<T = any> {
         this.name = name;
     }
 
-    protected abstract fetchTransactionRecords(options: ReaderOptions): Promise<T[]>;
+    abstract fetchTransactionRecords(options: ReaderOptions): Promise<T[]>;
 
-    protected abstract parseTransaction(record: T): Transaction | null;
+    abstract parseTransaction(record: T): Transaction | null;
 
     async readTransactions(options: ReaderOptions = {}): Promise<Transaction[]> {
         let records: T[] = [];

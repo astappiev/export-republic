@@ -1,4 +1,4 @@
-import { parseTransactionType, TransactionType, type Transaction } from "../transaction.ts";
+import { parseAssetType, parseTransactionType, TransactionType, type Transaction } from "../transaction.ts";
 import { logger } from "../utils/logger.ts";
 import { parseString } from '@fast-csv/parse';
 import { BaseReader, type ReaderOptions } from "./index.ts";
@@ -7,6 +7,7 @@ import { readFile } from "fs/promises";
 
 const FIELD_PARSERS: Partial<Record<keyof Transaction, (v: string) => unknown>> = {
     type: parseTransactionType,
+    assetType: parseAssetType,
     shares: Number, price: Number, amount: Number, fee: Number, tax: Number,
     date: (v) => new Date(v),
 };
@@ -16,7 +17,7 @@ export class TransactionsReader extends BaseReader<Record<string, string>> {
         super('transactions');
     }
 
-    protected async fetchTransactionRecords(options: ReaderOptions): Promise<Record<string, string>[]> {
+    async fetchTransactionRecords(options: ReaderOptions): Promise<Record<string, string>[]> {
         const text = options.inputContent || (await readFile(options.inputPath!, 'utf-8'));
 
         const rows: Record<string, string>[] = [];
@@ -31,7 +32,7 @@ export class TransactionsReader extends BaseReader<Record<string, string>> {
         return rows;
     }
 
-    protected parseTransaction(record: Record<string, string>): Transaction | null {
+    parseTransaction(record: Record<string, string>): Transaction | null {
         const type = record.type as TransactionType;
         if (!type || !Object.values(TransactionType).includes(type)) {
             logger.error({ record }, `Invalid transaction type: ${record.type}`);

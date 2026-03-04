@@ -1,5 +1,5 @@
 import { TransactionsReader } from './transactions.ts';
-import { TransactionType } from "../transaction.ts";
+import { AssetType, TransactionType } from "../transaction.ts";
 
 describe('TransactionsReader', () => {
     const reader = new TransactionsReader();
@@ -19,7 +19,7 @@ describe('TransactionsReader', () => {
         expect(buy.status).toBe('executed');
         expect(buy.isin).toBe('IE00B4L5Y983');
         expect(buy.symbol).toBe('IWDA');
-        expect(buy.assetType).toBe('ETF');
+        expect(buy.assetType).toBe(AssetType.ETF);
         expect(buy.name).toBe('iShares Core MSCI World');
         expect(buy.shares).toBe(10.5);
         expect(buy.price).toBe(82.34);
