@@ -37,7 +37,7 @@ export class YahooResolver extends BaseResolver {
     }
 
     async resolveSymbol(isin: string, options?: SymbolOptions): Promise<Symbol[]> {
-        if (!isin) {
+        if (!isin || typeof isin !== 'string') {
             return [];
         }
 

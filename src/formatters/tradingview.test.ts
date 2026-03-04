@@ -1,6 +1,6 @@
 import { TradingViewFormatter } from './tradingview.ts';
 import { MarketDataService } from '../services/market-data.ts';
-import { TransactionType, type Transaction } from '../readers/index.ts';
+import { TransactionType, type Transaction } from "../transaction.ts";
 
 describe('TradingviewFormatter', () => {
     const mockMarketDataService = {

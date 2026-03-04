@@ -121,9 +121,9 @@ export class CacheService {
             params.push(options.country);
         }
 
-        if (options.exchange) {
-            conditions.push('exchange = ?');
-            params.push(options.exchange);
+        if (options.exchanges) {
+            conditions.push('exchange IN (?)');
+            params.push(options.exchanges.join(','));
         }
 
         if (options.resolver) {

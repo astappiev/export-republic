@@ -1,7 +1,7 @@
 import dateFormat from "dateformat";
 import { writeToString, type Row } from '@fast-csv/format';
 import { BaseFormatter, type FormatOptions } from './index.ts';
-import { TransactionType, type Transaction } from '../readers/index.ts';
+import { TransactionType, type Transaction } from "../transaction.ts";
 import { MarketDataService } from '../services/market-data.ts';
 import { logger } from '../utils/logger.ts';
 
@@ -58,14 +58,14 @@ export class TradingViewFormatter extends BaseFormatter {
         switch (tx.type) {
             case TransactionType.BUY:
             case TransactionType.SELL:
-                symbol = await this.getSymbolWithExchange(tx.isin);
+                symbol = await this.getSymbolWithExchange(tx.isin, options);
                 side = tx.type === TransactionType.SELL ? TradingViewSide.SELL : TradingViewSide.BUY;
                 qty = tx.shares || 1;
                 if (tx.tax) this.cumulativeTax += tx.tax;
                 break;
 
             case TransactionType.DIVIDEND:
-                symbol = await this.getSymbolWithExchange(tx.isin);
+                symbol = await this.getSymbolWithExchange(tx.isin, options);
                 side = TradingViewSide.DIVIDEND;
                 qty = tx.amount || 0;
                 break;
@@ -120,11 +120,10 @@ export class TradingViewFormatter extends BaseFormatter {
 
     /**
      * Get symbol with exchange prefix (e.g., GETTEX:AMZ)
-     * Prefers German exchanges: XETR, GETTEX, FWB, SWB.
      */
-    async getSymbolWithExchange(isin?: string): Promise<string | null> {
+    private async getSymbolWithExchange(isin?: string, options: FormatOptions = {}): Promise<string | null> {
         if (!isin) return null;
-        const symbol = await this.marketDataService?.resolveSymbol(isin, { resolver: 'tradingview', currency: "EUR" });
+        const symbol = await this.marketDataService?.resolveSymbol(isin, { ...options, resolver: 'tradingview' });
         return symbol?.symbol || null;
     }
 

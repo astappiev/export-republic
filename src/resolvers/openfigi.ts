@@ -34,43 +34,49 @@ export class OpenfigiResolver extends BaseResolver {
     }
 
     async resolveSymbol(isin: string, options?: SymbolOptions): Promise<Symbol[]> {
-        if (!isin) {
+        if (!isin || typeof isin !== 'string') {
             return [];
         }
 
-        try {
-            const data = await this.client.post('mapping', {
-                json: [
-                    {
-                        idType: 'ID_ISIN',
-                        idValue: isin,
-                        currency: options?.currency,
-                        exchCode: options?.exchange,
-                        stateCode: options?.country,
-                    },
-                ],
-            }).json<OpenFigiResponse[]>();
+        const exchanges = options?.exchanges && options.exchanges.length > 0
+            ? options.exchanges
+            : [undefined];
 
-            if (data[0]?.data) {
-                const results: Symbol[] = data[0].data.map((instrument) => ({
-                    isin: isin,
-                    symbol: instrument.ticker,
-                    name: instrument.name,
-                    exchange: instrument.exchCode,
-                    type: instrument.securityType,
-                    resolver: this.name,
-                }));
+        for (const exchange of exchanges) {
+            try {
+                const data = await this.client.post('mapping', {
+                    json: [
+                        {
+                            idType: 'ID_ISIN',
+                            idValue: isin,
+                            currency: options?.currency,
+                            exchCode: exchange,
+                            stateCode: options?.country,
+                        },
+                    ],
+                }).json<OpenFigiResponse[]>();
 
-                logger.debug({ isin, count: results.length, symbol: results[0]?.symbol }, 'OpenFIGI resolved symbols');
-                return results;
+                if (data[0]?.data) {
+                    const results: Symbol[] = data[0].data.map((instrument) => ({
+                        isin: isin,
+                        symbol: instrument.ticker,
+                        name: instrument.name,
+                        exchange: instrument.exchCode,
+                        type: instrument.securityType,
+                        resolver: this.name,
+                    }));
+
+                    logger.debug({ isin, count: results.length, symbol: results[0]?.symbol }, 'OpenFIGI resolved symbols');
+                    return results;
+                }
+
+                logger.info({ isin, exchange, warning: data[0]?.warning }, 'OpenFIGI warning');
+            } catch (error) {
+                const err = error as Error;
+                logger.error({ isin, exchange, error: err.message }, 'OpenFIGI API error');
             }
-
-            logger.info({ isin, warning: data[0]?.warning }, 'OpenFIGI resolved symbols');
-            return [];
-        } catch (error) {
-            const err = error as Error;
-            logger.error({ isin, error: err.message }, 'OpenFIGI API error');
-            return [];
         }
+
+        return [];
     }
 }

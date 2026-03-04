@@ -1,6 +1,6 @@
 import { writeToString, type Row } from '@fast-csv/format';
 import { BaseFormatter, type FormatOptions } from './index.ts';
-import { TransactionType, type Transaction } from '../readers/index.ts';
+import { TransactionType, type Transaction } from "../transaction.ts";
 import { MarketDataService } from '../services/market-data.ts';
 import dateFormat from 'dateformat';
 

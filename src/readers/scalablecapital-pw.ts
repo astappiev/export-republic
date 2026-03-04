@@ -1,6 +1,7 @@
 import { logger } from '../utils/logger.ts';
 import { chromium, type Browser, type Page } from 'playwright';
-import { BaseReader, type Transaction, type ReaderOptions, TransactionType } from './index.ts';
+import { TransactionType, type Transaction } from "../transaction.ts";
+import { BaseReader, type ReaderOptions } from './index.ts';
 import { parseAmountEU } from '../utils/parse.ts';
 
 const LOGIN_URL = 'https://de.scalable.capital/en/secure-login';

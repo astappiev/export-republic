@@ -1,6 +1,7 @@
 import { logger } from '../utils/logger.ts';
 import { parseAmountEU } from '../utils/parse.ts';
-import { BaseReader, TransactionType, type Transaction, type ReaderOptions } from './index.ts';
+import { TransactionType, type Transaction } from "../transaction.ts";
+import { BaseReader, type ReaderOptions } from './index.ts';
 
 /**
  * Parsed transaction from PDF

@@ -1,7 +1,8 @@
 import { logger } from '../utils/logger.ts';
 import WebSocket from 'ws';
 import promptly from 'promptly';
-import { BaseReader, type Transaction, type ReaderOptions, TransactionType } from './index.ts';
+import { TransactionType, type Transaction } from "../transaction.ts";
+import { BaseReader, type ReaderOptions } from './index.ts';
 import { parseAmount } from '../utils/parse.ts';
 
 const API_BASE = 'https://api.traderepublic.com';

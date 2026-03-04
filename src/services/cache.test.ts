@@ -87,7 +87,7 @@ describe('CacheService', () => {
         expect(res3?.symbol).toBe('S1');
 
         // Filter by exchange
-        const res4 = await cache.getSymbol(isin, { exchange: 'X1' });
+        const res4 = await cache.getSymbol(isin, { exchanges: ['X1'] });
         expect(res4?.symbol).toBe('S1');
 
         // Non-matching criteria

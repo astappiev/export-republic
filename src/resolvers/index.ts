@@ -25,7 +25,7 @@ export interface Symbol {
 export interface SymbolOptions {
     country?: string;
     currency?: string;
-    exchange?: string;
+    exchanges?: string[];
     resolver?: string;
 }
 

@@ -1,4 +1,5 @@
-import { BaseReader, type ReaderOptions, type Transaction } from './index.ts';
+import { parseTransactionType, type Transaction } from "../transaction.ts";
+import { BaseReader, type ReaderOptions } from './index.ts';
 import { parseString } from '@fast-csv/parse';
 import { readFile } from 'fs/promises';
 import { logger } from '../utils/logger.ts';
@@ -27,11 +28,6 @@ enum ScalableCapitalTransactionStatus {
     CANCELLED = 'Cancelled',
 }
 
-interface ScalableCapitalCsvReaderOptions extends ReaderOptions {
-    csvFile?: string;
-    csvContent?: string;
-}
-
 /**
  * ScalableCapitalCsvReader - Parses transaction data from Scalable Capital CSV exports
  *
@@ -49,12 +45,12 @@ export class ScalableCapitalCsvReader extends BaseReader<ScalableCapitalCsvRecor
         super('scalable-capital-csv');
     }
 
-    async fetchTransactionRecords(options: ScalableCapitalCsvReaderOptions): Promise<ScalableCapitalCsvRecord[]> {
-        const csvContent = options.csvContent || (await readFile(options.csvFile!, 'utf-8'));
+    async fetchTransactionRecords(options: ReaderOptions): Promise<ScalableCapitalCsvRecord[]> {
+        const inputContent = options.inputContent || (await readFile(options.inputPath!, 'utf-8'));
 
         const records: ScalableCapitalCsvRecord[] = [];
         await new Promise<void>((resolve, reject) => {
-            parseString(csvContent, {
+            parseString(inputContent, {
                 headers: true,
                 delimiter: ';',
                 ignoreEmpty: true,
@@ -78,7 +74,7 @@ export class ScalableCapitalCsvReader extends BaseReader<ScalableCapitalCsvRecor
             return null;
         }
 
-        const type = BaseReader.parseTransactionType(record.type);
+        const type = parseTransactionType(record.type);
         if (!type) {
             logger.error({ record }, `Invalid transaction type: ${record.type}`);
             return null;

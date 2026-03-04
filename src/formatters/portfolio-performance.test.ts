@@ -1,6 +1,6 @@
 import { PortfolioPerformanceFormatter } from './portfolio-performance.ts';
 import { MarketDataService } from '../services/market-data.ts';
-import { TransactionType, type Transaction } from '../readers/index.ts';
+import { TransactionType, type Transaction } from "../transaction.ts";
 
 describe('PortfolioPerformanceFormatter', () => {
     const mockMarketDataService = {

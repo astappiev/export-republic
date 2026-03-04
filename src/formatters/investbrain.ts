@@ -1,6 +1,6 @@
 import { writeToString, type Row } from '@fast-csv/format';
 import { BaseFormatter, type FormatOptions } from './index.ts';
-import { type Transaction } from '../readers/index.ts';
+import { type Transaction } from "../transaction.ts";
 import { MarketDataService } from '../services/market-data.ts';
 import dateFormat from 'dateformat';
 
@@ -42,14 +42,14 @@ export class InvestbrainFormatter extends BaseFormatter {
      * @returns Array of values for CSV row
      */
     async formatTransactionRow(tx: Transaction, options: FormatOptions): Promise<Row | null> {
-        const { account, currency } = options;
+        const { account } = options;
 
         let units = tx.shares || 1;
         let unitPrice = tx.price || 0;
 
         let symbol = tx.isin;
         if (tx.isin && this.marketDataService) {
-            symbol = await this.marketDataService.getSymbolFromISIN(tx.isin);
+            symbol = await this.marketDataService.getSymbolFromISIN(tx.isin, options);
             if (!symbol) {
                 symbol = tx.isin;
             }
@@ -69,7 +69,7 @@ export class InvestbrainFormatter extends BaseFormatter {
             unitPrice || 0,
             (tx.fee || 0) + (tx.tax || 0),
             account || '',
-            tx.currency || currency || 'EUR',
+            tx.currency || options?.currency || 'EUR',
         ];
     }
 

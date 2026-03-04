@@ -35,7 +35,7 @@ export class TradingViewResolver extends BaseResolver {
     }
 
     async resolveSymbol(isin: string, options?: SymbolOptions): Promise<Symbol[]> {
-        if (!isin) {
+        if (!isin || typeof isin !== 'string') {
             return [];
         }
 
@@ -50,13 +50,20 @@ export class TradingViewResolver extends BaseResolver {
                 },
             }).json<TradingViewResponse>();
 
-            const isinMatches = response.symbols?.filter((s) => s.found_by_isin) || [];
-            if (isinMatches.length === 0) {
+            let tvResults = response.symbols?.filter((s) => s.found_by_isin) || [];
+            if (tvResults.length === 0) {
                 return [];
             }
 
-            // Return top 10 matches
-            const results: Symbol[] = isinMatches.slice(0, 10).map((match) => ({
+            if (options && options.exchanges) {
+                tvResults = tvResults.filter((s) => options.exchanges!.includes(s.exchange));
+            }
+
+            if (options && options.currency) {
+                tvResults = tvResults.filter((s) => options.currency!.includes(s.currency_code));
+            }
+
+            const results: Symbol[] = tvResults.map((match) => ({
                 symbol: `${match.exchange}:${match.symbol}`,
                 name: match.description,
                 exchange: match.exchange,

@@ -29,7 +29,7 @@ npm install
 node --experimental-transform-types src/cli.ts fetch -p +49123456789
 
 # Export directly to Ghostfolio
-node --experimental-transform-types src/cli.ts fetch -p +49123456789 -e ghostfolio -o portfolio.csv
+node --experimental-transform-types src/cli.ts fetch -p +49123456789 -f ghostfolio -o portfolio.csv
 
 # Convert an existing CSV file
 node --experimental-transform-types src/cli.ts convert transactions.csv -f tradingview
@@ -51,11 +51,11 @@ node --experimental-transform-types src/cli.ts resolve US0378331005
 
 | Formatter             | Flag                                  | Output |
 |-----------------------|---------------------------------------|--------|
-| Ghostfolio            | `-e gf` or `-e ghostfolio`            | CSV    |
-| Portfolio Performance | `-e pp` or `-e portfolio-performance` | CSV    |
-| TradingView           | `-e tv` or `-e tradingview`           | CSV    |
-| Investbrain           | `-e ib` or `-e investbrain`           | CSV    |
-| JSON                  | `-e json`                             | JSON   |
+| Ghostfolio            | `-f gf` or `-f ghostfolio`            | CSV    |
+| Portfolio Performance | `-f pp` or `-f portfolio-performance` | CSV    |
+| TradingView           | `-f tv` or `-f tradingview`           | CSV    |
+| Investbrain           | `-f ib` or `-f investbrain`           | CSV    |
+| JSON                  | `-f json`                             | JSON   |
 
 ## 🔗 Related Projects
 

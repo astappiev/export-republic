@@ -1,6 +1,6 @@
 import { writeToString, type Row } from '@fast-csv/format';
 import { BaseFormatter, type FormatOptions } from './index.ts';
-import { type Transaction } from '../readers/index.ts';
+import { type Transaction } from "../transaction.ts";
 import { MarketDataService } from '../services/market-data.ts';
 import dateFormat from 'dateformat';
 
@@ -49,16 +49,14 @@ export class GhostfolioFormatter extends BaseFormatter {
      * @returns Array of values for CSV row
      */
     async formatTransactionRow(tx: Transaction, options: FormatOptions): Promise<Row | null> {
-        const { currency } = options;
-
-        let dataSource = options.dataSource || 'YAHOO';
+        let dataSource = 'YAHOO';
         const units = tx.shares ?? 1;
         const unitPrice = tx.price ?? tx.amount ?? 0;
         let note = tx.comment || '';
 
         let symbol: string | undefined;
         if (tx.isin && this.marketDataService) {
-            symbol = await this.marketDataService.getSymbolFromISIN(tx.isin);
+            symbol = await this.marketDataService.getSymbolFromISIN(tx.isin, options);
             if (!symbol) {
                 dataSource = 'MANUAL';
                 symbol = tx.isin;
@@ -70,7 +68,7 @@ export class GhostfolioFormatter extends BaseFormatter {
             this.formatDate(tx.date),
             symbol,
             dataSource,
-            tx.currency || currency || 'EUR',
+            tx.currency || options?.currency || 'EUR',
             unitPrice,
             units,
             (tx.type || '').toLowerCase(),

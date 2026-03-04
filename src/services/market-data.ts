@@ -51,7 +51,7 @@ export class MarketDataService {
                             continue;
                         }
 
-                        if (options.exchange && options.exchange != result.exchange) {
+                        if (options.exchanges && options.exchanges.length > 0 && !(result.exchange && options.exchanges.includes(result.exchange))) {
                             continue;
                         }
 

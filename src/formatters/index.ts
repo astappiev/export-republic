@@ -1,11 +1,8 @@
-import { type Transaction } from '../readers/index.ts';
+import { type Transaction } from "../transaction.ts";
+import type { SymbolOptions } from '../resolvers/index.ts';
 import { MarketDataService } from '../services/market-data.ts';
 
-export interface FormatOptions {
-    /** Default currency code for output */
-    currency?: string;
-    /** Data source identifier */
-    dataSource?: string;
+export interface FormatOptions extends SymbolOptions {
     /** Account name or ID */
     account?: string;
     /** Additional options */
